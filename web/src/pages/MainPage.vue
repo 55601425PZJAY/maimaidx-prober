@@ -147,6 +147,12 @@
               </v-btn>
             </v-card-title>
             <v-card-text>
+              <v-tabs v-model="importTab">
+                <v-tab>网页源代码</v-tab>
+                <v-tab>Cookie</v-tab>
+              </v-tabs>
+              <v-tabs-items class="pt-4" v-model="importTab">
+                <v-tab-item>
               <v-textarea
                 type="textarea"
                 label="请将乐曲数据的源代码粘贴到这里"
@@ -154,6 +160,11 @@
                 :rows="15"
                 outlined
               ></v-textarea>
+                </v-tab-item>
+                <v-tab-item>
+                  <v-text-field v-model="importUserId" class="ml-4" label="userId" />
+                </v-tab-item>
+              </v-tabs-items>
             </v-card-text>
             <v-card-actions>
               <v-spacer />
@@ -510,6 +521,8 @@ export default {
   data: function () {
     return {
       tab: "",
+      importTab: 0,
+      importUserId: "",
       loginForm: {
         username: "",
         password: "",
@@ -1009,10 +1022,29 @@ export default {
       // console.log(this.records);
     },
     flushData: function () {
+      if (this.importTab == 0) {
       const records = this.pageToRecordList(this.textarea);
       this.merge(records);
       this.sync();
+      } else {
+        this.loading = true;
+        axios.post("https://www.diving-fish.com/api/pageparser/cookie", {
+          "cookie": this.importUserId
+        }).then(resp => {
+          this.loading = false;
+          let records = resp.data;
+          for (let i = 0; i < records.length; i++) {
+            records[i].song_id = this.title2id[records[i].title + records[i].type];
+          }
+          this.merge(records);
+          this.sync();
+        }).catch(() => {
+          this.$message.error("Cookie 有误。请获取最新的 maimai.wahlap.com 域名下的 userId 字段。")
+          this.loading = false;
+        })
+      }
       this.textarea = "";
+      this.importUserId = "";
       this.dialogVisible = false;
     },
     pageToRecordList: function (pageData) {

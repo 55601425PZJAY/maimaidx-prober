@@ -7,6 +7,7 @@ const xmldom = require('xmldom');
 
 const app = express();
 app.use(bodyParser.text({ limit: '4MB' }));
+app.use(bodyParser.json());
 app.all("*", function (req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "content-type");
@@ -195,6 +196,42 @@ const pageToRecordList = function (pageData) {
     return { "status": "error" }
   }
 }
+
+async function cookie2records(arg) {
+  let cookie = arg;
+  let records = [];
+  for (let i = 0; i < 5; i++) {
+    const url = `https://maimai.wahlap.com/maimai-mobile/record/musicGenre/search/?genre=99&diff=${i}`;
+    resp = await axios.get(url, {
+      headers: {
+        Cookie: `userId=${cookie}`
+      }
+    })
+    const cookieori = resp.headers['set-cookie']
+    let obj = {};
+    for (let i in cookieori) {
+      obj[cookieori[i].split('; ')[0].split('=')[0]] = cookieori[i].split('; ')[0].split('=')[1]
+    }
+    if (!obj.userId) {
+      return undefined;
+    } else {
+      cookie = obj.userId;
+    }
+    records = records.concat(pageToRecordList(resp.data));
+  }
+  return records;
+}
+
+app.post('/cookie', async (req, res) => {
+  let cookie = req.body.cookie;
+  console.log(cookie);
+  records = await cookie2records(cookie);
+  if (records) {
+    res.send(records);
+  } else {
+    res.status(400).send({"message": "cookie error"});
+  }
+})
 
 app.post('/page', (req, res) => {
   if (req.body.startsWith("<login>")) {
